@@ -1,0 +1,371 @@
+---
+title: "Homework 2"
+author: "Amin Baabol"
+output:
+  word_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message=F,warning=F,echo=F,fig_height=10,fig_width=7,cache = F)
+```
+
+## Instructions
+
+Answer all questions stated in each problem. Discuss how your results address each question.
+
+Submit your answers as a pdf, typeset (knitted) from an Rmd file. Include the Rmd file in your submission. You can typeset directly to PDF or typeset to Word then save to PDF In either case, both Rmd and PDF are required. If you are having trouble with .rmd, let us know and we will help you.
+
+This file can be used as a template for your submission. Please follow the instructions found under "Content/Begin Here" titled \textbf{Homework Formatting}. No code should be included in your PDF submission unless explicitly requested. Use the `echo = F` flag to exclude code from the typeset document.
+
+For any question requiring a plot or graph, answer the question first using standard R graphics (See ?graphics). Then provide a equivalent answer using `library(ggplot2)` functions and syntax. You are not required to produce duplicate plots in answers to questions that do not explicitly require graphs, but it is encouraged. 
+
+You can remove the `Instructions` section from your submission.
+
+## Exercises
+
+Please answer the following questions from **Handbook of Statistical Analyses in R** (HSAUR) and the written questions. Refer to **R Graphics Cookbook or Modern Data Science with R** for any ggplots.
+
+1. (Ex. 7.2 in HSAUR, modified for clarity) Collett (2003) argues that two outliers need to be removed from the \textbf{plasma} data. Try to identify those two unusual observations by means of a scatterplot. (Hint: Consider a plot of the residuals from a simple linear regression.)
+
+Assumptions: the relationship between the predictor variables(globulin&fibrinogen) is linear hence why we're using simple lineaer regression model.
+
+
+```{r}
+library("HSAUR2")
+library(ggplot2)
+data("plasma")
+#checking out the variables' behavior before plotting
+summary(plasma)
+
+#organizing the data by the binary variable ESR
+esr.lower <- lm(globulin ~ fibrinogen, data=subset(plasma, ESR=='ESR < 20'))
+esr.higher <- lm(globulin ~ fibrinogen, data=subset(plasma, ESR=='ESR > 20'))
+
+#ggplot
+ggplot(data=plasma, aes(x=fibrinogen, y=globulin, colour=ESR)) + geom_smooth(method="lm") + geom_point()
+labs(title="Fibrinogen vs Globulin with respect to ES",
+     x="Figrinogen",
+     y="Globulin")
+
+#Rstudio
+plot(plasma$globulin ~ plasma$fibrinogen, col=plasma$ESR, 
+     main="Fibrinogen vs Globulin with respect to ESR",
+     ylab="Globulin",
+     xlab="Fibrinogen",
+     pch=20)
+abline(esr.lower,col="black")
+abline(esr.higher,col="red")
+legend(4.6,46.3,pch=c(20,20), col=c("red","black"),c("high esr", "low esr"),box.col="blue",cex=.7)
+
+
+```
+Discussion: There are two outliers for when ESR is greater than 20 at fib ~c(3.8,5.1) and also other outliers for when esr is less than 20, which in my opinion suggests the data should be split into two groups. spliting the data into two binary groups indicates simple linear regression is not the correct model to be deployed.
+
+
+2. (Ex. 6.6 in HSAUR, modified for clarity) (Multiple Regression) Continuing from the lecture on the \textbf{hubble} data from \textbf{gamair} library:
+
+a) Fit a quadratic regression model, i.e., a model of the form
+$$\text{Model 2:   } velocity = \beta_1 \times distance + \beta_2 \times distance^2 +\epsilon$$
+```{r}
+#part a
+#install.packages("gamair")
+library(gamair)
+data(hubble)
+
+#quick glance at the data
+#head(hubble)
+# fitting it into a model
+quad.regress.model <- lm(y ~ x + poly(x,2), data = hubble)
+
+#checking the summary to get a better understanding
+summary(quad.regress.model)
+
+```
+
+b) Plot the fitted curve from Model 2 over the scatterplot of the data.
+```{r}
+#part b
+library(ggplot2)
+#plotting with ggplot
+ggplot(data = quad.regress.model, aes(x = quad.regress.model$model$x, y = quad.regress.model$model$y)) +
+  geom_point() +
+  geom_line(aes(x = quad.regress.model$model$x, y = quad.regress.model$fitted.values), colour = "green") +
+  labs(title = "Distance vs Velocity ", x = "Distance", y = "velocity")
+
+#Rstudio
+#we've to generate a sequence to plot the model
+seq1 <- data.frame(x = seq(min(hubble$x, na.rm=TRUE), max(hubble$x, na.rm=TRUE), by = 0.01))
+seq2 <- seq1^2
+#fitting a line
+val.predict <- quad.regress.model$fitted.values
+model2 <- lm(y~x - 1 , data = hubble)
+#data frame for x and y values
+data <- as.data.frame(cbind(x=hubble$x,val.predict))
+plot(y~x, data=hubble, xlab="Distance",ylab="Velocity",main="Distance vs Velocity ",col="darkgreen",pch=16)
+lines(data$x[order(data$x)],data$val.predict[order(data$val.predict)], col = "navyblue")
+
+```
+
+c) Add a simple linear regression fit over this plot. Use the relationship between \textit{velocity} and \textit{distance} to determine the constraints on the parameters and explain your reasoning. Use different color and/or line type to differentiate the two and add a legend to differentiate between the two models. 
+```{r}
+#ggplot
+hmod <- lm(y~x - 1 , data = hubble)
+ggplot(data = quad.regress.model, aes(x = quad.regress.model$model$x, y = quad.regress.model$model$y)) +
+  geom_point() +
+  geom_line(aes(x = quad.regress.model$model$x, y = quad.regress.model$fitted.values, colour = "quadratic")) +
+  geom_line(data = model2, aes(x = model2$model$x, y = model2$fitted.values, colour = "linear")) +
+  labs(title = "Distance vs Velocity", x = "Distance", y = "velocity", colour = "Models")
+
+# Simple lm fitted in class
+plot(y~x, data = hubble, main = "hubble data with a fitted line", xlab = "Distance", ylab = "Velocity")
+lines(data$x[order(data$x)], data$val.predict[order(data$val.predict)], col = "blue")
+abline(quad.regress.model, col="orange")
+legend(2,1700,pch=c(20,20), col=c("blue","orange"),c("quadrartic", "linear"),box.col="blue",cex=.7)
+```
+d) Examine the plot, which model do you consider most sensible?
+Although there is hardly a significant difference between the two models,however, given the small dataset a simple linear regression model seems to be better suited in the generalization of this data.
+
+
+e) Which model is better? Provide a statistical justification for your choice of model.
+Note: The quadratic model here is still regarded as a `linear regression` model since the term `linear` relates to the parameters of the model and not to the powers of the explanatory variables.
+
+```{r}
+#comparing the two models' summary
+
+#quadratic
+summary(quad.regress.model)
+summary(model2)
+```
+Dicussion:Looking at the R squared values, they quadratic model has an R squared value of 0.76 where as the simple regression has a value of 0.94. while those are both good R squared values,however the simple regression shows smaller variations between the observed data and the fitted values.This is further supported by the even smaller p-value of 1.032e-15 comparing it to that of 2.476e-07 for the quadratic model
+
+
+
+3. (Ex. 7.4 in HSAUR, modified for clarity) The \textbf{leuk} data from package \textbf{MASS} shows the survival times from diagnosis of patients suffering from leukemia and the values of two explanatory variables, the white blood cell count (wbc) and the presence or absence of a morphological characteristic of the white blood cells (ag). 
+
+a) Define a binary outcome variable according to whether or not patients lived for at least 24 weeks after diagnosis. Call it \textit{surv24}. 
+```{r}
+library(MASS)
+library(dplyr)
+data(leuk)
+#peeking at the data
+#head(leuk)
+
+#adding surv24 as a subset column of leuk data
+data1 <- data.frame (wbc = leuk$wbc,ag = leuk$ag,time = leuk$time,surv24 = ifelse(leuk$time>= 24, 1,0))
+
+```
+
+b) Fit a logistic regression model to the data with \textit{surv24} as the response variable. If regression coefficients are close to zero, then apply a log transformation to the corresponding covariate. Write the model for the fitted data (see Exercise 2a for an example of a model.)
+```{r}
+#checking to see if the response variables are getting close to zero
+#model.surv24 <- glm(surv24 ~ wbc + ag, data=leuk,family='binomial')
+#summary(model.surv24)
+
+#applying log transformation and creating a new data frame with those log variables
+data1.log <- data.frame (cbind(data1,log.wbc = log(leuk$wbc)))
+
+#Fitting a logistic regression model to the data looking at surv24 and repsonse of ag and the log of wbc using the binomial family
+surv.model <- glm(surv24 ~ ag + log.wbc, family='binomial', data=data1.log)
+```
+
+
+c) Interpret the final model you fit. Provide graphics to support your interpretation.
+```{r}
+#fitting and predicting
+data1.log.fit <- predict(surv.model, type='response')
+data1.log <- data.frame (cbind(data1.log, data1.log.fit))
+
+Leukemia <- subset(data1.log[data1.log$ag=='present',])
+No_Leukemia <- subset(data1.log[data1.log$ag=='absent',])
+
+ggplot(data=data1.log, aes(x=wbc, surv24, col=ag)) + geom_point() +
+  scale_color_manual(name = "Diagnosis", values=c("lightblue","darkred")) +
+  geom_line(data=No_Leukemia, aes(x=wbc, y=data1.log.fit), color="lightblue" ,lwd=0.5) +
+  geom_line(data=Leukemia, aes(x=wbc, y=data1.log.fit), color='darkred', lwd=0.5) + 
+labs(title="Effect of wbc count on surviving leukemia",
+     y="survivability",
+     x='log transformed wbc counts')
+
+seq1 <- seq(0, max(log(data1$wbc)+5), by = 0.1)
+data1.2.log <- data.frame("increment" = seq1, "agpress" = (exp(surv.model$coefficients[1] +surv.model$coefficients[2]*seq1 + surv.model$coefficients[3])/(1+exp(surv.model$coefficient[1] + surv.model$coefficients[2]*seq1 + surv.model$coefficients[3]))), "agabs" = exp(surv.model$coefficients[1] +surv.model$coefficients[2]*seq1)/(1+exp(surv.model$coefficient[1] + surv.model$coefficients[2]*seq1)))
+
+
+
+```
+    
+d) Update the model from part b) to include an interaction term between the two predictors. Which model fits the data better? Provide a statistical justification for your choice of model.
+```{r}
+#model1: the basic model
+summary(surv.model)
+
+#model2: the more complex one with multilple variables interacting
+surv.model.2 <- glm(surv24 ~ ag + log.wbc + ag*log.wbc, family='binomial', data=data1.log)
+summary(surv.model.2)
+```
+Discussion: The basic, simple regression model seems to be the better alternative because it offer lower p-value which indicates the independent variables have signifcant correlation with the response variable. Having said that, the more complex method does have it's own perks inclduing lower residuals.
+
+
+
+
+4.  (Adapted from ISLR) Load the \textbf{Default} dataset from \textbf{ISLR} library. The dataset contains four features on 10,000 customers. We want to predict which customers will default on their credit card debt based on the observed features.
+a) Select a class of models using appropriate summaries and graphics. **Do not overplot.**
+```{r}
+library(ISLR)
+data(Default)
+
+yes <- subset(Default[Default$default=="Yes",])
+no <- subset(Default[Default$default=='No',])
+
+#further subsetting our data into students and non students to extract further insight
+Not_student <- subset(Default[Default$student=='No',])
+Student <- subset(Default[Default$student=="Yes",])
+
+#Those who defaulted on their debt
+summary(yes)
+#Those who didn't default on their debt
+summary(no)
+
+
+#creating a ggplots to show default by income and whether they're student or not
+#boxplot
+ggplot(data=Default, aes(x=default, y=income, fill=student)) + 
+  geom_boxplot() + 
+  facet_grid(student~.) +
+  coord_flip() + 
+  labs(title="Default based on Income ",
+       x="Default ",
+       y="Income")
+
+#Rstudio boxplot on default based on balance and whether they're student or not
+ggplot(data=Default, aes(x=default, y=balance, fill=student)) + 
+  geom_boxplot() + 
+    facet_grid(student~.) +
+  coord_flip() + 
+  labs(title=" Default based on Balance",
+       x="Default ",
+       y="Balance") 
+
+#Scatterplot comparing students and non-students defaults based on income vs balance
+ggplot(data=Student, aes(x=balance, y=income, col=default)) + 
+  geom_point() +
+  labs(title = "Students Default based on Income vs Balance " , x="Balance", y="Income")
+
+ggplot(data=Not_student, aes(x=balance, y=income, col=default)) + 
+  geom_point() +
+  labs(title = "Non-students Default Based on Income vs Balance vs Income " , x="Balance", y="Income")
+
+
+```
+
+
+    
+b) State the class of models. Fit the appropriate logistic regression model. 
+```{r}
+#simple logistic regression model that has all the variables 
+simple.model <- glm(default~student+balance+income,family='binomial',data=Default)
+
+#complicated version fo the simple model with the variables interacting with themselves 
+crazy.model <- glm(default~student+balance+income+student*income+student*balance+balance*income, family='binomial', data=Default)
+```
+
+
+c) Discuss your results, paying particular attention to which feature variables are predictive of the response. Are there meaningful interactions among the feature variables?
+```{r}
+#summarizing both models to compare them
+summary(simple.model)
+summary(crazy.model)
+```
+Discussion: It seems to that the first simple model is better alternative with much lower standard error than the complicated model where all the variables are multiplied to one another. upon reading the summary of the simple model, balance plays the most significant effect on the response variable followed by the student category. The residual doesn't really change all that much. 
+
+    
+d) How accurate is your model for predicting the response?  What is the error rate? 
+```{r}
+#we'll convert the categorical subset into binary subset and create a matrix to fit the model
+subset.binary <- ifelse(Default$default == "Yes",1,0)
+
+#fitting and predicting both models
+simple.fit<- predict(simple.model, type="response")
+crazy.fit<- predict(crazy.model, type="response")
+
+simple.model.p <- factor(ifelse(simple.fit >= 0.50, "Yes","No"))
+simple.model.t <- factor(ifelse(subset.binary >= .5, "Yes","No"))
+crazy.model.p <- factor(ifelse(crazy.fit > 0.50, "Yes","No"))
+crazy.model.t <- factor(ifelse(subset.binary >= .5, "Yes","No"))
+
+#error calculation matrices for the simple model
+simple.model.matrix <- table(simple.model.p, True=simple.model.t)
+simple.model.error <- (simple.model.matrix[1,2]+simple.model.matrix[2,1])/sum(simple.model.matrix)
+
+#error calculation matrices for the complicated model
+crazy.model.matrix <- table(crazy.model.p, True=crazy.model.t)
+crazy.model.error <- (crazy.model.matrix[1,2]+crazy.model.matrix[2,1])/sum(crazy.model.matrix)
+
+```
+
+```{r}
+#simple model error rate
+simple.model.error.rarte <- 100*simple.model.error
+simple.model.accuracy <- (100-(simple.model.error*100))
+simple.model.error.rarte
+simple.model.accuracy
+#complicated model error rate
+crazy.model.error <- 100*crazy.model.error
+crazy.model.accuracy <- (100-(simple.model.error*100))
+crazy.model.error
+crazy.model.accuracy
+```
+Discussion: Both models' prediction seems highly accurate.The simple model's error rate is a mere 2.68% which is very low. On the other hand, the complex model's error is also extremely low at 2.69%. Given the great accuracy of both models, i'd recommend the simple model.
+
+5. Go through Section 7.3.1 of HSAUR. Run all the codes (additional exploration of data is allowed) and write your own version of explanation and interpretation. \textit{For this problem, please show the code of function you created as well as show the output. You can do this by adding} `echo = T` \textit{to the code chunk header.}
+```{r}
+library(HSAUR3)
+data(plasma)
+layout(matrix(1:2, ncol=2))
+cdplot(ESR ~ fibrinogen, data=plasma)
+cdplot(ESR ~ globulin, data=plasma)
+```
+
+Discussion: The two plots indicate how the categorical variable esr behaves when the other predictor variables change. It seems that esr drasticall drops as fibrinogen approaches right around 4.5 while esr fluctuates as globulin continues.
+```{r}
+plasma_glm_1 <- glm(ESR ~ fibrinogen, data=plasma, family=binomial())
+confint(plasma_glm_1, parm="fibrinogen")
+summary(plasma_glm_1)
+```
+
+Discussion: This part function begins by deploying a binomial logistic regression model to show fibrinogen as the predictor variable to potentially explain how ESR, the response variable would behave. The summary output shows a 5% signifance of finrinogen.
+```{r}
+exp(coef(plasma_glm_1)["fibrinogen"])
+```
+
+```{r}
+exp(confint(plasma_glm_1, parm='fibrinogen'))
+```
+Discussion: Exponentiating the function had undone the log odds of fibrinogen and its confidence interval to make the summary easier to read. This indicates that fibrinogen has considerable influence on esr.
+
+complex logistic regression  with multiple explanatory variables.
+```{r}
+plasma_glm_2 <-glm(ESR ~ fibrinogen + globulin, data= plasma, family=binomial())
+summary(plasma_glm_2)
+```
+Discussion: In this model with both multiple explanatory variables, fibrinogen still shows the same significant level while globulin appears to be significant at the 0.05 confidence interval level. Hence it should be included in the model selction.
+```{r}
+anova(plasma_glm_1, plasma_glm_2, test="Chisq")
+```
+Discussion: The anova function is utilized when comparing two models.
+
+
+The bubble plot is used to illustrate the interactions of all the three variables
+```{r}
+prob <- predict(plasma_glm_2, type='response')
+plot(globulin ~ fibrinogen, data=plasma, xlim=c(2,6), ylim=c(25,55), pch='.')
+symbols(plasma$fibrinogen, plasma$globulin, circles= prob, add=TRUE)
+```
+Discussion:  This bubble plot does a good job explaining how these explanatory and response variables are behave when they interact with each other.The plot indicates that when fibrinogen increases esr value also increase. The same is also true for globulin but to a lesser exten, however globulin seems to have a cut off point.
+
+
+#Citation
+“A Handbook of Statistical Analyses Using R, third Edition” by Everitt and Hothorn
+R Graphics Cookbook” by Winston Chang published through O’Reilly (Basic guide to Grammar of Graphics in R)
+www.stackoverflow.com
+http://r-statistics.co/Linear-Regression.html
